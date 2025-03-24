@@ -113,7 +113,9 @@
                 let changeHtml = '';
                 if (index > 0) {
                     const prevSupply = supplyHistory[index - 1].totalSupplyDAI;
-                    const change = entry.totalSupplyDAI - prevSupply;
+                    const currentSupply = entry.totalSupplyDAI;
+                    const change = currentSupply - prevSupply; // New minus old
+                    
                     if (change > 0) {
                         changeHtml = `<div class="change-positive">Change: +${formatNumber(change)} DAI</div>`;
                     } else if (change < 0) {
