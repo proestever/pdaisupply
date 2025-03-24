@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseChain DAI Supply Monitor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        #supplyList {
+            list-style: none;
+            padding: 0;
+        }
+        .supply-entry {
+            background: white;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .timestamp {
+            font-weight: bold;
+            color: #444;
+        }
+        .supply {
+            margin: 5px 0;
+        }
+        .change-positive {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .change-negative {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .wei {
+            font-size: 0.9em;
+            color: #666;
+        }
+        #status {
+            text-align: center;
+            margin-top: 10px;
+            font-style: italic;
+            color: #666;
+        }
+        .spinner {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>PulseChain DAI Supply Monitor</h1>
+    <ul id="supplyList"></ul>
+    <div id="status">Loading...</div>
+
+    <script>
+        const BASE_URL = 'https://api.scan.pulsechain.com/api';
+        const DAI_CONTRACT_ADDRESS = '0x6B175474E89094C44Da98b954EedeAC495271d0F';
+        const supplyHistory = [];
+
+        // Format number with commas
+        function formatNumber(num) {
+            return num.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+        }
+
+        // Fetch supply data
+        async function getDAITotalSupply() {
+            try {
+                const response = await fetch(`${BASE_URL}?module=stats&action=tokensupply&contractaddress=${DAI_CONTRACT_ADDRESS}`);
+                const data = await response.json();
+
+                if (data.status === "1") {
+                    const totalSupplyWei = BigInt(data.result);
+                    const decimals = 18n;
+                    const totalSupplyDAI = Number(totalSupplyWei) / Number(10n ** decimals);
+                    const timestamp = new Date().toLocaleString();
+
+                    return { timestamp, totalSupplyDAI, totalSupplyWei };
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        // Update display
+        function updateDisplay(newEntry) {
+            supplyHistory.unshift(newEntry); // Add to start of array
+            if (supplyHistory.length > 10) supplyHistory.pop(); // Keep last 10 entries
+
+            const supplyList = document.getElementById('supplyList');
+            supplyList.innerHTML = '';
+
+            supplyHistory.forEach((entry, index) => {
+                const li = document.createElement('li');
+                li.className = 'supply-entry';
+
+                let changeHtml = '';
+                if (index > 0) {
+                    const prevSupply = supplyHistory[index - 1].totalSupplyDAI;
+                    const change = entry.totalSupplyDAI - prevSupply;
+                    if (change > 0) {
+                        changeHtml = `<div class="change-positive">Change: +${formatNumber(change)} DAI</div>`;
+                    } else if (change < 0) {
+                        changeHtml = `<div class="change-negative">Change: ${formatNumber(change)} DAI</div>`;
+                    } else {
+                        changeHtml = '<div>Change: No change</div>';
+                    }
+                }
+
+                li.innerHTML = `
+                    <div class="timestamp">${entry.timestamp}</div>
+                    <div class="supply">Supply: ${formatNumber(entry.totalSupplyDAI)} DAI</div>
+                    ${changeHtml}
+                    <div class="wei">Wei: ${entry.totalSupplyWei.toString()}</div>
+                `;
+                supplyList.appendChild(li);
+            });
+        }
+
+        // Show loading status
+        function showLoading(remainingSeconds) {
+            const status = document.getElementById('status');
+            status.innerHTML = `<span class="spinner">⏳</span> Fetching DAI supply... (${remainingSeconds}s remaining)`;
+        }
+
+        // Show error status
+        function showError(message) {
+            const status = document.getElementById('status');
+            status.textContent = `Error: ${message} (retrying in 5s)`;
+        }
+
+        // Main monitoring loop
+        async function startMonitoring() {
+            async function updateCycle() {
+                try {
+                    const supplyData = await getDAITotalSupply();
+                    updateDisplay(supplyData);
+
+                    let remainingSeconds = 10;
+                    const countdown = setInterval(() => {
+                        remainingSeconds--;
+                        if (remainingSeconds >= 0) {
+                            showLoading(remainingSeconds);
+                        }
+                    }, 1000);
+
+                    setTimeout(() => {
+                        clearInterval(countdown);
+                        updateCycle();
+                    }, 10000);
+                } catch (error) {
+                    showError(error.message);
+                    setTimeout(updateCycle, 5000);
+                }
+            }
+
+            updateCycle();
+        }
+
+        // Start the monitor
+        startMonitoring();
+    </script>
+</body>
+</html>
