@@ -1,168 +1,205 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PulseChain DAI Supply Monitor</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 20px;
-            background-color: #1a1a1a;
-            color: #e0e0e0;
-        }
-        h1 {
-            color: #ffffff;
-            text-align: center;
-        }
-        #supplyList {
-            list-style: none;
-            padding: 0;
-        }
-        .supply-entry {
-            background: #2d2d2d;
-            border-radius: 5px;
-            padding: 15px;
-            margin-bottom: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-        .timestamp {
-            font-weight: bold;
-            color: #ffffff;
-        }
-        .supply {
-            margin: 5px 0;
-            font-size: 1.2em;
-            color: #e0e0e0;
-        }
-        .change-positive {
-            color: #00ff00;
-            font-weight: bold;
-        }
-        .change-negative {
-            color: #ff4444;
-            font-weight: bold;
-        }
-        .wei {
-            font-size: 0.9em;
-            color: #a0a0a0;
-        }
-        #status {
-            text-align: center;
-            margin-top: 10px;
-            font-style: italic;
-            color: #a0a0a0;
-        }
-        .spinner {
-            display: inline-block;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DAI Supply Monitor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #111111;
+      color: #e0e0e0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+      animation: fadeIn 1s ease-in-out;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 2.8em;
+      color: #ffffff;
+    }
+    .card {
+      background-color: #1a1a1a;
+      border: 1px solid #333333;
+      border-radius: 8px;
+      padding: 15px;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .card:hover {
+      background-color: #222222;
+      box-shadow: 0px 4px 10px rgba(0,0,0,0.7);
+    }
+    .ticker-logo {
+      width: 24px;
+      height: 24px;
+      vertical-align: middle;
+      margin-right: 5px;
+    }
+    .section-header {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 1.8em;
+      border-bottom: 1px solid #444444;
+      padding-bottom: 10px;
+      color: #ffffff;
+    }
+    #supplyList {
+      list-style: none;
+      padding: 0;
+    }
+    .supply-entry {
+      background-color: #1a1a1a;
+      border: 1px solid #333333;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 10px;
+      transition: background-color 0.3s ease;
+    }
+    .supply-entry:hover {
+      background-color: #222222;
+    }
+    .timestamp {
+      font-weight: bold;
+      color: #ffffff;
+    }
+    .supply {
+      margin: 5px 0;
+      font-size: 1.2em;
+    }
+    .change-positive {
+      color: #00ff00;
+      font-weight: bold;
+    }
+    .change-negative {
+      color: #ff4444;
+      font-weight: bold;
+    }
+    .wei {
+      font-size: 0.9em;
+      color: #a0a0a0;
+    }
+    #status {
+      text-align: center;
+      margin-top: 10px;
+      font-style: italic;
+      color: #a0a0a0;
+    }
+    .spinner {
+      display: inline-block;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @media (max-width: 768px) {
+      h1 { font-size: 2.4em; }
+      .section-header { font-size: 1.6em; }
+      .card, .supply-entry { padding: 10px; }
+    }
+  </style>
 </head>
 <body>
-    <h1>PulseChain DAI Supply Monitor</h1>
-    <ul id="supplyList"></ul>
-    <div id="status"><span class="spinner">⏳</span> Checking supply...</div>
+  <div class="container">
+    <h1>DAI Supply Monitor</h1>
+    <div class="card">
+      <div class="section-header">
+        <img src="https://tokens.app.pulsex.com/images/tokens/0x6B175474E89094C44Da98b954EedeAC495271d0F.png" alt="DAI Logo" class="ticker-logo" />
+        DAI Supply History
+      </div>
+      <ul id="supplyList"></ul>
+      <div id="status"><span class="spinner">⏳</span> Checking supply...</div>
+    </div>
+  </div>
 
-    <script>
-        const BASE_URL = 'https://api.scan.pulsechain.com/api';
-        const DAI_CONTRACT_ADDRESS = '0x6B175474E89094C44Da98b954EedeAC495271d0F';
-        let lastSupplyDAI = null;
-        let lastSupplyWei = null;
+  <script>
+    const BASE_URL = 'https://api.scan.pulsechain.com/api';
+    const DAI_CONTRACT_ADDRESS = '0x6B175474E89094C44Da98b954EedeAC495271d0F';
+    let lastSupplyDAI = null;
+    let lastSupplyWei = null;
 
-        // Format number with commas
-        function formatNumber(num) {
-            return num.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    function formatNumber(num) {
+      return num.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    }
+
+    async function getDAITotalSupply() {
+      try {
+        const response = await fetch(`${BASE_URL}?module=stats&action=tokensupply&contractaddress=${DAI_CONTRACT_ADDRESS}`);
+        const data = await response.json();
+        if (data.status === "1") {
+          const totalSupplyWei = BigInt(data.result);
+          const decimals = 18n;
+          const totalSupplyDAI = Number(totalSupplyWei) / Number(10n ** decimals);
+          return { totalSupplyDAI, totalSupplyWei };
+        } else {
+          throw new Error(data.message);
         }
+      } catch (error) {
+        throw error;
+      }
+    }
 
-        // Fetch supply data
-        async function getDAITotalSupply() {
-            try {
-                const response = await fetch(`${BASE_URL}?module=stats&action=tokensupply&contractaddress=${DAI_CONTRACT_ADDRESS}`);
-                const data = await response.json();
+    function addSupplyEntry({ timestamp, totalSupplyDAI, totalSupplyWei, change }) {
+      const supplyList = document.getElementById('supplyList');
+      const li = document.createElement('li');
+      li.className = 'supply-entry';
+      const changeClass = change > 0 ? 'change-positive' : change < 0 ? 'change-negative' : '';
+      const changeText = change !== null ? 
+        `Change: ${change > 0 ? '+' : ''}${formatNumber(change)} DAI` : 
+        'Change: Initial value';
 
-                if (data.status === "1") {
-                    const totalSupplyWei = BigInt(data.result);
-                    const decimals = 18n;
-                    const totalSupplyDAI = Number(totalSupplyWei) / Number(10n ** decimals);
-                    return { totalSupplyDAI, totalSupplyWei };
-                } else {
-                    throw new Error(data.message);
-                }
-            } catch (error) {
-                throw error;
-            }
+      li.innerHTML = `
+        <div class="timestamp">${timestamp}</div>
+        <div class="supply">Total Supply: ${formatNumber(totalSupplyDAI)} DAI</div>
+        <div class="${changeClass}">${changeText}</div>
+        <div class="wei">Wei: ${totalSupplyWei.toString()}</div>
+      `;
+      supplyList.insertBefore(li, supplyList.firstChild);
+    }
+
+    function showError(message) {
+      const status = document.getElementById('status');
+      status.textContent = `Error: ${message} (retrying...)`;
+    }
+
+    async function startMonitoring() {
+      async function checkSupply() {
+        try {
+          const { totalSupplyDAI, totalSupplyWei } = await getDAITotalSupply();
+          const status = document.getElementById('status');
+          status.innerHTML = `<span class="spinner">⏳</span> Checking supply...`;
+
+          if (lastSupplyDAI === null || Math.abs(totalSupplyDAI - lastSupplyDAI) > 0.0001) {
+            const change = lastSupplyDAI !== null ? totalSupplyDAI - lastSupplyDAI : null;
+            const timestamp = new Date().toLocaleString();
+            addSupplyEntry({ timestamp, totalSupplyDAI, totalSupplyWei, change });
+            lastSupplyDAI = totalSupplyDAI;
+            lastSupplyWei = totalSupplyWei;
+          }
+          setTimeout(checkSupply, 2000);
+        } catch (error) {
+          showError(error.message);
+          setTimeout(checkSupply, 5000);
         }
+      }
+      checkSupply();
+    }
 
-        // Add new entry to list
-        function addSupplyEntry({ timestamp, totalSupplyDAI, totalSupplyWei, change }) {
-            const supplyList = document.getElementById('supplyList');
-            const li = document.createElement('li');
-            li.className = 'supply-entry';
-
-            const changeClass = change > 0 ? 'change-positive' : change < 0 ? 'change-negative' : '';
-            const changeText = change !== null ? 
-                `Change: ${change > 0 ? '+' : ''}${formatNumber(change)} DAI` : 
-                'Change: Initial value';
-
-            li.innerHTML = `
-                <div class="timestamp">${timestamp}</div>
-                <div class="supply">Total Supply: ${formatNumber(totalSupplyDAI)} DAI</div>
-                <div class="${changeClass}">${changeText}</div>
-                <div class="wei">Wei: ${totalSupplyWei.toString()}</div>
-            `;
-            supplyList.insertBefore(li, supplyList.firstChild); // Add to top
-        }
-
-        // Show error status
-        function showError(message) {
-            const status = document.getElementById('status');
-            status.textContent = `Error: ${message} (retrying...)`;
-        }
-
-        // Main monitoring loop
-        async function startMonitoring() {
-            async function checkSupply() {
-                try {
-                    const { totalSupplyDAI, totalSupplyWei } = await getDAITotalSupply();
-                    const status = document.getElementById('status');
-                    status.innerHTML = `<span class="spinner">⏳</span> Checking supply...`;
-
-                    // Only add entry if there's a change or it's the first load
-                    if (lastSupplyDAI === null || Math.abs(totalSupplyDAI - lastSupplyDAI) > 0.0001) {
-                        const change = lastSupplyDAI !== null ? totalSupplyDAI - lastSupplyDAI : null;
-                        const timestamp = new Date().toLocaleString();
-                        
-                        addSupplyEntry({
-                            timestamp,
-                            totalSupplyDAI,
-                            totalSupplyWei,
-                            change
-                        });
-
-                        lastSupplyDAI = totalSupplyDAI;
-                        lastSupplyWei = totalSupplyWei;
-                    }
-
-                    // Schedule next check
-                    setTimeout(checkSupply, 2000); // Check every 2 seconds
-                } catch (error) {
-                    showError(error.message);
-                    setTimeout(checkSupply, 5000); // Retry after 5s on error
-                }
-            }
-
-            checkSupply();
-        }
-
-        // Start the monitor
-        startMonitoring();
-    </script>
+    startMonitoring();
+  </script>
 </body>
 </html>
